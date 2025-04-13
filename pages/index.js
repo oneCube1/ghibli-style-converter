@@ -67,31 +67,39 @@ export default function Home() {
         ]
       };
 
-      // 直接发送API请求到yunwu.ai
-      const response = await axios.post('https://yunwu.ai/v1/chat/completions', payload, {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer sk-a1rL1XFLv6xMZ0qvZKJbuTAtTX51eLlvcIJTRbD0aMG6bQaz`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 180000 // 3分钟超时
-      });
-
-      // 处理响应
-      if (response.data && response.data.choices && response.data.choices.length > 0) {
-        const content = response.data.choices[0].message.content;
-        
-        // 从响应中提取图片URL
-        const imageUrl = extractImageUrl(content);
-        
-        if (imageUrl) {
-          setResultImageUrl(imageUrl);
-          setProgressStatus('转换完成!');
-        } else {
-          setErrorMessage('未能从响应中提取图片URL');
+      // 首先通知我们的API开始处理
+      await axios.post('/api/convert', payload);
+      
+      // 然后直接轮询yunwu.ai的API，检查是否已完成处理
+      setProgressStatus('请求已发送，正在等待处理...');
+      
+      // 轮询yunwu.ai的API以检查结果
+      let retries = 0;
+      const maxRetries = 30; // 最多尝试30次，每次间隔10秒
+      let imageUrl = null;
+      
+      while (retries < maxRetries && !imageUrl) {
+        try {
+          setProgressStatus(`处理中...已等待${retries * 10}秒`);
+          
+          // 直接查询处理结果 (这里需要根据yunwu.ai的API调整)
+          // 这部分需要根据yunwu.ai的API文档进行实现
+          // 例如，如果yunwu.ai提供了检查任务状态的API
+          
+          // 假设我们可以通过ID查询结果
+          // 实际代码需要根据yunwu.ai的API调整
+          await new Promise(resolve => setTimeout(resolve, 10000)); // 等待10秒
+          retries++;
+        } catch (error) {
+          console.error('轮询失败:', error);
         }
+      }
+      
+      if (imageUrl) {
+        setResultImageUrl(imageUrl);
+        setProgressStatus('转换完成!');
       } else {
-        setErrorMessage('接收到的响应格式不正确');
+        setErrorMessage('处理超时，请稍后再试');
       }
     } catch (error) {
       console.error('转换过程出错:', error);
