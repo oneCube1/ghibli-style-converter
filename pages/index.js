@@ -67,14 +67,31 @@ export default function Home() {
         ]
       };
 
-      // 发送API请求
-      const response = await axios.post('/api/convert', payload);
-      
-      if (response.data.imageUrl) {
-        setResultImageUrl(response.data.imageUrl);
-        setProgressStatus('转换完成!');
+      // 直接发送API请求到yunwu.ai
+      const response = await axios.post('https://yunwu.ai/v1/chat/completions', payload, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer sk-a1rL1XFLv6xMZ0qvZKJbuTAtTX51eLlvcIJTRbD0aMG6bQaz`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 180000 // 3分钟超时
+      });
+
+      // 处理响应
+      if (response.data && response.data.choices && response.data.choices.length > 0) {
+        const content = response.data.choices[0].message.content;
+        
+        // 从响应中提取图片URL
+        const imageUrl = extractImageUrl(content);
+        
+        if (imageUrl) {
+          setResultImageUrl(imageUrl);
+          setProgressStatus('转换完成!');
+        } else {
+          setErrorMessage('未能从响应中提取图片URL');
+        }
       } else {
-        setErrorMessage('未能获取转换后的图片');
+        setErrorMessage('接收到的响应格式不正确');
       }
     } catch (error) {
       console.error('转换过程出错:', error);
@@ -96,6 +113,27 @@ export default function Home() {
       };
       reader.onerror = (error) => reject(error);
     });
+  };
+
+  // 从响应内容中提取图片URL
+  const extractImageUrl = (content) => {
+    // 尝试匹配Markdown格式的图片链接
+    const markdownPattern = /!\[.*?\]\((https?:\/\/[^)]+)\)/;
+    const markdownMatch = content.match(markdownPattern);
+    
+    if (markdownMatch && markdownMatch[1]) {
+      return markdownMatch[1];
+    }
+    
+    // 尝试匹配直接的URL链接
+    const urlPattern = /(https?:\/\/\S+\.(jpg|jpeg|png|gif))/i;
+    const urlMatch = content.match(urlPattern);
+    
+    if (urlMatch && urlMatch[1]) {
+      return urlMatch[1];
+    }
+    
+    return null;
   };
 
   // 下载结果图片
